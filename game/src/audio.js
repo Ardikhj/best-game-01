@@ -87,6 +87,16 @@ export const SFX = {
   dash(audio) {
     noise(audio, { seconds: 0.14, volume: 0.08, cutoff: 3200 });
   },
+  nova(audio) {
+    blip(audio, { type: 'sawtooth', from: 220, to: 40, seconds: 0.4, volume: 0.2 });
+    noise(audio, { seconds: 0.35, volume: 0.16, cutoff: 900 });
+  },
+  chain(audio) {
+    blip(audio, { type: 'square', from: 1400, to: 320, seconds: 0.08, volume: 0.05 });
+  },
+  aegis(audio) {
+    blip(audio, { type: 'triangle', from: 880, to: 1320, seconds: 0.18, volume: 0.12 });
+  },
   pickup(audio) {
     blip(audio, { type: 'sine', from: 660, to: 990, seconds: 0.12, volume: 0.12 });
     blip(audio, { type: 'sine', from: 990, to: 1320, seconds: 0.12, volume: 0.10, delay: 0.09 });

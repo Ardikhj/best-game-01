@@ -13,8 +13,8 @@ const PLAY_LIMIT = 110;
 const STEP_LIMIT = 60 * 60 * 12; // 12 simulated minutes at most
 
 // Pick the boon the autopilot wants most: damage first, then more bolts,
-// then fire rate, then health, then the rest in listed order.
-const BOON_WANT = ['damage', 'multishot', 'rate', 'vitality', 'pierce', 'speed', 'light', 'dash'];
+// then the new skills (nova, chain), then fire rate, then the rest.
+const BOON_WANT = ['damage', 'multishot', 'nova', 'chain', 'rate', 'orbit', 'lifesteal', 'aegis', 'vitality', 'pierce', 'speed', 'light', 'dash'];
 
 function nearestEnemy(world) {
   const p = world.player;
@@ -54,10 +54,12 @@ function autopilot(world) {
     if (len > 1) { moveX /= len; moveY /= len; }
   }
   const crowded = world.enemies.some((e) => Math.hypot(e.x - p.x, e.y - p.y) < 90);
+  const closeCount = world.enemies.filter((e) => Math.hypot(e.x - p.x, e.y - p.y) < 170).length;
   return {
     moveX, moveY, aimX, aimY,
     firing: true,
     dash: crowded && p.dashCooldown <= 0,
+    nova: p.nova && p.novaTimer <= 0 && closeCount >= 3,
     dt: STEP,
   };
 }

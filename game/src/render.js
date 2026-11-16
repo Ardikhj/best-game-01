@@ -1,7 +1,7 @@
 // Emberwarden's drawing: procedural vector art with glow — the lantern
 // keeper, the shadow wisps, the bolts of light — plus the HUD and every
 // screen (title, boon choice, pause, game over, victory). No images.
-import { ARENA, PALETTE, PLAYER, WAVES } from './config.js';
+import { ARENA, PALETTE, PLAYER, SKILLS, WAVES } from './config.js';
 
 export const SCREEN_TITLE = 'title';
 export const SCREEN_PLAY = 'play';
@@ -39,6 +39,8 @@ export function drawWorld(ctx, world, screen, best) {
   drawShots(ctx, world);
   drawEnemies(ctx, world);
   drawBolts(ctx, world);
+  drawArcs(ctx, world);
+  drawRings(ctx, world);
   drawPlayer(ctx, world);
   drawParticles(ctx, world);
   drawFloaters(ctx, world);
@@ -92,9 +94,84 @@ function drawLanternLight(ctx, world, screen) {
   ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
 }
 
+function drawArcs(ctx, world) {
+  if (world.arcs.length === 0) return;
+  ctx.save();
+  ctx.shadowColor = '#bfefff';
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = '#dff6ff';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  world.arcs.forEach((arc) => {
+    const alpha = Math.max(0, arc.life / arc.maxLife);
+    ctx.globalAlpha = alpha;
+    // A jagged bolt: two kinks off the straight line, flickering with time.
+    const mx = (arc.x1 + arc.x2) / 2;
+    const my = (arc.y1 + arc.y2) / 2;
+    const dx = arc.x2 - arc.x1;
+    const dy = arc.y2 - arc.y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const k1 = Math.sin(world.time * 61 + arc.x1) * 10;
+    const k2 = Math.sin(world.time * 47 + arc.y2) * 10;
+    ctx.beginPath();
+    ctx.moveTo(arc.x1, arc.y1);
+    ctx.lineTo(arc.x1 + dx * 0.33 + nx * k1, arc.y1 + dy * 0.33 + ny * k1);
+    ctx.lineTo(mx + nx * k2, my + ny * k2);
+    ctx.lineTo(arc.x1 + dx * 0.66 - nx * k1, arc.y1 + dy * 0.66 - ny * k1);
+    ctx.lineTo(arc.x2, arc.y2);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function drawRings(ctx, world) {
+  if (world.rings.length === 0) return;
+  ctx.save();
+  world.rings.forEach((ring) => {
+    const alpha = Math.max(0, ring.life / ring.maxLife);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = PALETTE.emberHot;
+    ctx.lineWidth = 5;
+    ctx.shadowColor = PALETTE.ember;
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ring.x, ring.y, ring.r * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 function drawPlayer(ctx, world) {
   const p = world.player;
   if (world.over) return;
+  // Orbiting blades circle the keeper.
+  if (p.orbit > 0) {
+    ctx.save();
+    ctx.shadowColor = PALETTE.emberHot;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = PALETTE.emberHot;
+    for (let i = 0; i < p.orbit; i += 1) {
+      const a = p.orbitAngle + (i / p.orbit) * Math.PI * 2;
+      const bx = p.x + Math.cos(a) * SKILLS.orbitRadius;
+      const by = p.y + Math.sin(a) * SKILLS.orbitRadius;
+      ctx.beginPath();
+      ctx.arc(bx, by, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#7a4d12';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bx, by, 9.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   ctx.save();
   ctx.translate(p.x, p.y);
   // Flicker while invulnerable after a hit.
@@ -292,18 +369,41 @@ function drawHud(ctx, world, best) {
   ctx.font = '13px sans-serif';
   ctx.fillStyle = PALETTE.dim;
   const names = p.boons.map((id) => {
-    const b = { damage: 'Ember Rounds', rate: 'Rapid Wick', speed: 'Swift Boots', vitality: 'Hearth Heart', multishot: 'Twin Flames', pierce: 'Piercing Light', dash: 'Gale Step', light: 'Wide Lantern' }[id];
+    const b = { damage: 'Ember Rounds', rate: 'Rapid Wick', speed: 'Swift Boots', vitality: 'Hearth Heart', multishot: 'Twin Flames', pierce: 'Piercing Light', dash: 'Gale Step', light: 'Wide Lantern', nova: 'Ember Nova', chain: 'Storm Lantern', lifesteal: 'Ember Feast', aegis: "Warden's Aegis", orbit: 'Ember Orbit' }[id];
     return b || id;
   });
   // Keep the line clear of the dash indicator on the right.
   const shown = names.length > 6 ? names.slice(0, 6).concat([`+${names.length - 6} more`]) : names;
   if (shown.length > 0) ctx.fillText(`Boons: ${shown.join(' · ')}`, 18, ARENA.height - 16);
 
-  // Dash readiness, bottom right.
+  // Aegis charges: small shields next to the HP bar.
+  if (p.aegisMax > 0) {
+    for (let i = 0; i < p.aegisMax; i += 1) {
+      const sx = 272 + i * 20;
+      const sy = 29;
+      ctx.fillStyle = i < p.aegis ? PALETTE.emberHot : 'rgba(242, 234, 216, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - 7);
+      ctx.lineTo(sx + 6, sy);
+      ctx.lineTo(sx, sy + 7);
+      ctx.lineTo(sx - 6, sy);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Dash and nova readiness, bottom right.
   ctx.textAlign = 'right';
   ctx.fillStyle = p.dashCooldown <= 0 ? PALETTE.ember : PALETTE.dim;
   ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(p.dashCooldown <= 0 ? 'DASH READY  [Shift]' : 'Dash recharging…', ARENA.width - 20, ARENA.height - 16);
+  const dashLine = p.dashCooldown <= 0 ? 'DASH READY  [Shift]' : 'Dash recharging…';
+  if (p.nova) {
+    ctx.fillText(dashLine, ARENA.width - 20, ARENA.height - 34);
+    ctx.fillStyle = p.novaTimer <= 0 ? PALETTE.emberHot : PALETTE.dim;
+    ctx.fillText(p.novaTimer <= 0 ? 'NOVA READY  [E]' : `Nova ${Math.ceil(p.novaTimer)}s`, ARENA.width - 20, ARENA.height - 16);
+  } else {
+    ctx.fillText(dashLine, ARENA.width - 20, ARENA.height - 16);
+  }
   ctx.restore();
 }
 
@@ -344,7 +444,7 @@ function drawTitle(ctx, world, best) {
   titleText(ctx, 'The dark is closing in. Your lantern is your weapon — and your life.', 300, 19, PALETTE.text);
   titleText(ctx, 'Survive all 10 waves. Between waves, choose a boon.', 330, 19, PALETTE.text);
   titleText(ctx, 'WASD / Arrows — move      Mouse — aim      Click / Space — fire bolt', 400, 18, PALETTE.dim);
-  titleText(ctx, 'Shift — dash      P — pause      M — mute', 428, 18, PALETTE.dim);
+  titleText(ctx, 'Shift — dash      E — nova blast (after the Ember Nova boon)      P — pause      M — mute', 428, 18, PALETTE.dim);
   if (best > 0) titleText(ctx, `Best score: ${best}`, 478, 18, PALETTE.gold);
   ctx.save();
   const pulse = 0.7 + 0.3 * Math.sin(world.time * 2.8);

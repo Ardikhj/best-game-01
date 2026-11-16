@@ -2,7 +2,7 @@
 // the waves and the boons between them. Pure simulation — it knows nothing
 // about the canvas or the keyboard; the loop hands it a control packet
 // each step and reads back the state to draw.
-import { ARENA, BOONS, ENEMY, PLAYER, SPITTER, STEP, WAVES } from './config.js';
+import { ARENA, BOONS, ENEMY, PLAYER, SKILLS, SPITTER, STEP, WAVES } from './config.js';
 import { makeRng, pick, range, shuffle } from './random.js';
 
 // Bit flags a step can report to the loop (for sounds and screen changes).
@@ -16,6 +16,9 @@ export const EVENT_BOON_READY = 32;
 export const EVENT_OVER = 64;
 export const EVENT_VICTORY = 128;
 export const EVENT_DASH = 256;
+export const EVENT_NOVA = 512;
+export const EVENT_CHAIN = 1024;
+export const EVENT_AEGIS = 2048;
 
 const KIND_ORDER = ['wisp', 'spitter', 'brute', 'splitter'];
 
@@ -31,6 +34,8 @@ export function createWorld(seed) {
     shots: [],
     particles: [],
     floaters: [],
+    arcs: [],
+    rings: [],
     wave: 0,
     score: 0,
     kills: 0,
@@ -68,6 +73,16 @@ function freshPlayer() {
     dashX: 0,
     dashY: 0,
     invuln: 0,
+    // Skills granted by boons (see SKILLS in config.js).
+    nova: false,                 // Ember Nova unlocked
+    novaDamage: SKILLS.novaDamage,
+    novaTimer: 0,                // cooldown left on the nova blast
+    chain: 0,                    // Storm Lantern: arcs per bolt hit
+    lifesteal: 0,                // Ember Feast: HP per kill
+    aegisMax: 0,                 // Warden's Aegis: hits blocked per wave
+    aegis: 0,                    // charges left this wave
+    orbit: 0,                    // Ember Orbit: blades circling the player
+    orbitAngle: 0,
     boons: [],
   };
 }
@@ -95,6 +110,8 @@ export function startWave(world, waveIndex) {
   world.waveState = 'fighting';
   world.banner = `Wave ${world.wave}`;
   world.bannerTimer = 2.0;
+  // The Aegis renews itself at the dawn of every wave.
+  world.player.aegis = world.player.aegisMax;
 }
 
 function spawnEdgePoint(world) {
@@ -124,6 +141,7 @@ function spawnEnemy(world, kind) {
     shotTimer: range(world.rng, 1.0, 2.0),
     wobble: range(world.rng, 0, Math.PI * 2),
     flash: 0,
+    orbitHit: 0,
   };
   world.enemies.push(enemy);
 }
@@ -145,6 +163,15 @@ export function applyBoon(world, boonId) {
   else if (boonId === 'pierce') p.pierce += 1;
   else if (boonId === 'dash') world.dashMul = (world.dashMul ?? 1) * 0.6;
   else if (boonId === 'light') p.lightRadius *= 1.35;
+  else if (boonId === 'nova') {
+    // First pick unlocks the blast; later picks make it hit harder.
+    if (p.nova) p.novaDamage += 20;
+    p.nova = true;
+  }
+  else if (boonId === 'chain') p.chain += 1;
+  else if (boonId === 'lifesteal') p.lifesteal += SKILLS.lifestealPerKill;
+  else if (boonId === 'aegis') { p.aegisMax += 1; p.aegis += 1; }
+  else if (boonId === 'orbit') p.orbit += 1;
 }
 
 // --- Combat helpers ------------------------------------------------------
@@ -172,6 +199,11 @@ function killEnemy(world, index, events) {
   floater(world, enemy.x, enemy.y - enemy.radius, `+${enemy.score}`, '#ffd97a');
   world.score += enemy.score;
   world.kills += 1;
+  // Ember Feast: a little of the dark comes back as life.
+  if (world.player.lifesteal > 0 && world.player.hp < world.player.maxHp) {
+    world.player.hp = Math.min(world.player.maxHp, world.player.hp + world.player.lifesteal);
+    floater(world, world.player.x, world.player.y - 24, `+${world.player.lifesteal}`, '#7dff9a');
+  }
   if (enemy.kind === 'splitter') {
     for (let i = 0; i < 2; i += 1) {
       const a = range(world.rng, 0, Math.PI * 2);
@@ -181,6 +213,7 @@ function killEnemy(world, index, events) {
         radius: ENEMY.mote.radius, hp: ENEMY.mote.hp, maxHp: ENEMY.mote.hp,
         speed: ENEMY.mote.speed, damage: ENEMY.mote.damage, score: ENEMY.mote.score,
         touchTimer: 0, shotTimer: 0, wobble: range(world.rng, 0, Math.PI * 2), flash: 0,
+        orbitHit: 0,
       });
     }
   }
@@ -191,6 +224,14 @@ function killEnemy(world, index, events) {
 function hurtPlayer(world, amount, events) {
   const p = world.player;
   if (p.invuln > 0 || world.over) return events;
+  // The Aegis takes the hit instead of the keeper.
+  if (p.aegis > 0) {
+    p.aegis -= 1;
+    p.invuln = 0.6;
+    burst(world, p.x, p.y, '#ffe08a', 16, 200);
+    floater(world, p.x, p.y - 24, 'Aegis!', '#ffe08a');
+    return events | EVENT_AEGIS;
+  }
   p.hp -= amount;
   p.invuln = PLAYER.hurtGrace;
   world.shake = Math.min(16, world.shake + 9);
@@ -205,6 +246,30 @@ function hurtPlayer(world, amount, events) {
     events |= EVENT_OVER;
   }
   return events;
+}
+
+// The Ember Nova: a ring of fire that hurts everything close and shoves
+// the horde back. Costs its cooldown; the blast itself is the reward.
+function novaBlast(world, events) {
+  const p = world.player;
+  p.novaTimer = SKILLS.novaCooldown;
+  world.rings.push({ x: p.x, y: p.y, r: 20, maxR: SKILLS.novaRadius, life: 0.35, maxLife: 0.35 });
+  burst(world, p.x, p.y, '#ffb347', 30, 320);
+  world.shake = Math.min(18, world.shake + 8);
+  for (let i = world.enemies.length - 1; i >= 0; i -= 1) {
+    const enemy = world.enemies[i];
+    const dx = enemy.x - p.x;
+    const dy = enemy.y - p.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if (dist < SKILLS.novaRadius + enemy.radius) {
+      enemy.hp -= p.novaDamage;
+      enemy.flash = 0.15;
+      enemy.x += (dx / dist) * 60;
+      enemy.y += (dy / dist) * 60;
+      if (enemy.hp <= 0) events = killEnemy(world, i, events);
+    }
+  }
+  return events | EVENT_NOVA;
 }
 
 // --- The step ------------------------------------------------------------
@@ -236,8 +301,10 @@ export function stepWorld(world, controls) {
   // --- Player movement and dash ---
   const dashMul = world.dashMul ?? 1;
   if (p.dashCooldown > 0) p.dashCooldown -= dt;
+  if (p.novaTimer > 0) p.novaTimer -= dt;
   if (p.invuln > 0) p.invuln -= dt;
   if (p.fireTimer > 0) p.fireTimer -= dt;
+  if (p.orbit > 0) p.orbitAngle += SKILLS.orbitSpeed * dt;
   if (p.dashTimer > 0) {
     p.dashTimer -= dt;
     p.x += p.dashX * PLAYER.dashSpeed * dt;
@@ -280,6 +347,11 @@ export function stepWorld(world, controls) {
     events |= EVENT_SHOOT;
   }
 
+  // --- Ember Nova ---
+  if (controls.nova && p.nova && p.novaTimer <= 0) {
+    events = novaBlast(world, events);
+  }
+
   // --- Bolts ---
   for (let i = world.bolts.length - 1; i >= 0; i -= 1) {
     const bolt = world.bolts[i];
@@ -305,6 +377,27 @@ export function stepWorld(world, controls) {
           if (enemy.hp <= 0) {
             events = killEnemy(world, j, events);
           }
+          // Storm Lantern: the bolt's light jumps to nearby foes.
+          if (p.chain > 0) {
+            const targets = world.enemies
+              .filter((other) => other !== enemy
+                && Math.hypot(other.x - enemy.x, other.y - enemy.y) < SKILLS.chainRadius)
+              .sort((a, b) => Math.hypot(a.x - enemy.x, a.y - enemy.y)
+                - Math.hypot(b.x - enemy.x, b.y - enemy.y))
+              .slice(0, p.chain);
+            targets.forEach((target) => {
+              const chainDamage = Math.round(p.damage * SKILLS.chainDamageMul);
+              target.hp -= chainDamage;
+              target.flash = 0.12;
+              world.arcs.push({ x1: enemy.x, y1: enemy.y, x2: target.x, y2: target.y, life: 0.18, maxLife: 0.18 });
+              burst(world, target.x, target.y, '#bfefff', 4, 110);
+              events |= EVENT_CHAIN;
+              if (target.hp <= 0) {
+                const idx = world.enemies.indexOf(target);
+                if (idx !== -1) events = killEnemy(world, idx, events);
+              }
+            });
+          }
           if (bolt.pierceLeft > 0) {
             bolt.pierceLeft -= 1;
           } else {
@@ -322,6 +415,7 @@ export function stepWorld(world, controls) {
     const enemy = world.enemies[i];
     if (enemy.flash > 0) enemy.flash -= dt;
     if (enemy.touchTimer > 0) enemy.touchTimer -= dt;
+    if (enemy.orbitHit > 0) enemy.orbitHit -= dt;
     const dx = p.x - enemy.x;
     const dy = p.y - enemy.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -358,6 +452,27 @@ export function stepWorld(world, controls) {
     if (dist < rr && enemy.touchTimer <= 0) {
       enemy.touchTimer = ENEMY[enemy.kind].touch;
       events = hurtPlayer(world, enemy.damage, events);
+    }
+
+    // Orbiting blades cut anything they touch, throttled per enemy.
+    if (p.orbit > 0 && enemy.orbitHit <= 0 && !world.over) {
+      for (let b = 0; b < p.orbit; b += 1) {
+        const ba = p.orbitAngle + (b / p.orbit) * Math.PI * 2;
+        const bx = p.x + Math.cos(ba) * SKILLS.orbitRadius;
+        const by = p.y + Math.sin(ba) * SKILLS.orbitRadius;
+        const odx = enemy.x - bx;
+        const ody = enemy.y - by;
+        const orr = enemy.radius + 12;
+        if (odx * odx + ody * ody < orr * orr) {
+          enemy.hp -= SKILLS.orbitDamage;
+          enemy.flash = 0.12;
+          enemy.orbitHit = SKILLS.orbitHitCooldown;
+          burst(world, bx, by, '#ffe08a', 4, 100);
+          events |= EVENT_HIT;
+          if (enemy.hp <= 0) events = killEnemy(world, i, events);
+          break;
+        }
+      }
     }
   }
 
@@ -415,5 +530,15 @@ function updateFx(world, dt) {
     fl.y -= 42 * dt;
     fl.life -= dt;
     if (fl.life <= 0) world.floaters.splice(i, 1);
+  }
+  for (let i = world.arcs.length - 1; i >= 0; i -= 1) {
+    world.arcs[i].life -= dt;
+    if (world.arcs[i].life <= 0) world.arcs.splice(i, 1);
+  }
+  for (let i = world.rings.length - 1; i >= 0; i -= 1) {
+    const ring = world.rings[i];
+    ring.life -= dt;
+    ring.r = ring.maxR * (1 - ring.life / ring.maxLife);
+    if (ring.life <= 0) world.rings.splice(i, 1);
   }
 }

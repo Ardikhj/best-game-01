@@ -7,6 +7,7 @@ export const KEYS = {
   right: ['KeyD', 'ArrowRight'],
   dash: ['ShiftLeft', 'ShiftRight'],
   fire: ['Space'],
+  nova: ['KeyE'],
   pause: ['KeyP', 'Escape'],
   restart: ['KeyR'],
   mute: ['KeyM'],

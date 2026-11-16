@@ -55,9 +55,9 @@ export const WAVES = [
   { wisp: 15, spitter: 5, brute: 2, splitter: 2, spawnGap: 0.86, hpMul: 1.45, speedMul: 1.18 },
   { wisp: 18, spitter: 8, brute: 3, splitter: 4, spawnGap: 0.76, hpMul: 1.55, speedMul: 1.22 },
   { wisp: 20, spitter: 10, brute: 4, splitter: 4, spawnGap: 0.70, hpMul: 1.62, speedMul: 1.25 },
-  { wisp: 21, spitter: 10, brute: 5, splitter: 5, spawnGap: 0.64, hpMul: 1.90, speedMul: 1.33 },
-  { wisp: 22, spitter: 12, brute: 6, splitter: 5, spawnGap: 0.58, hpMul: 2.08, speedMul: 1.39 },
-  { wisp: 25, spitter: 13, brute: 7, splitter: 6, spawnGap: 0.52, hpMul: 2.30, speedMul: 1.45 },
+  { wisp: 21, spitter: 11, brute: 5, splitter: 5, spawnGap: 0.64, hpMul: 2.10, speedMul: 1.38 },
+  { wisp: 24, spitter: 12, brute: 7, splitter: 5, spawnGap: 0.58, hpMul: 2.30, speedMul: 1.44 },
+  { wisp: 28, spitter: 14, brute: 8, splitter: 6, spawnGap: 0.52, hpMul: 2.55, speedMul: 1.50 },
 ];
 
 export const SPITTER = {
@@ -70,6 +70,20 @@ export const SPITTER = {
   shotInterval: 2.3,
 };
 
+// Numbers for the five player skills. Boons tune them; the world reads them.
+export const SKILLS = {
+  novaDamage: 45,      // Ember Nova: flat damage in the ring
+  novaRadius: 210,     // ring reach around the player
+  novaCooldown: 6,     // seconds between novas
+  chainRadius: 190,    // how far lightning jumps from the struck foe
+  chainDamageMul: 0.5, // chained hits deal half a bolt's damage
+  lifestealPerKill: 1, // HP returned for every kill (per Ember Feast pick)
+  orbitRadius: 74,     // how far the blades circle from the player
+  orbitDamage: 10,     // damage per blade touch
+  orbitHitCooldown: 0.4, // seconds before the same foe can be cut again
+  orbitSpeed: 3.2,     // radians per second around the player
+};
+
 export const BOONS = [
   { id: 'damage',  name: 'Ember Rounds',   blurb: '+30% bolt damage',        desc: 'Your bolts burn hotter.' },
   { id: 'rate',    name: 'Rapid Wick',     blurb: '+25% fire rate',          desc: 'The lantern spits light faster.' },
@@ -79,6 +93,11 @@ export const BOONS = [
   { id: 'pierce',  name: 'Piercing Light', blurb: 'Bolts pierce +1 enemy',   desc: 'Light that passes straight through.' },
   { id: 'dash',    name: 'Gale Step',      blurb: 'Dash recharges 40% faster', desc: 'Wind at your heels.' },
   { id: 'light',   name: 'Wide Lantern',   blurb: '+35% lantern light radius', desc: 'The dark keeps further back.' },
+  { id: 'nova',    name: 'Ember Nova',     blurb: 'Nova blast [E]: 45 damage in a ring', desc: 'The lantern erupts in a ring of fire.' },
+  { id: 'chain',   name: 'Storm Lantern',  blurb: 'Bolts arc lightning to +1 nearby foe', desc: 'Your light learns to jump.' },
+  { id: 'lifesteal',name: 'Ember Feast',   blurb: 'Heal 1 HP for every kill', desc: 'The dark feeds the flame.' },
+  { id: 'aegis',   name: "Warden's Aegis", blurb: 'Block 1 hit each wave',   desc: 'A shield of dawn, renewed each wave.' },
+  { id: 'orbit',   name: 'Ember Orbit',    blurb: '+1 orbiting blade',      desc: 'Shards of light circle you.' },
 ];
 
 // Colours of the night: deep indigo field, ember gold player, violet/teal dark.

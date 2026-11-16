@@ -9,8 +9,8 @@ import {
   boonCardRects, drawWorld,
 } from './render.js';
 import { createWorld, resetWorld, startWave, stepWorld, applyBoon,
-  EVENT_DASH, EVENT_HIT, EVENT_HURT, EVENT_KILL, EVENT_OVER, EVENT_SHOOT,
-  EVENT_VICTORY, EVENT_WAVE_CLEAR } from './world.js';
+  EVENT_AEGIS, EVENT_CHAIN, EVENT_DASH, EVENT_HIT, EVENT_HURT, EVENT_KILL,
+  EVENT_NOVA, EVENT_OVER, EVENT_SHOOT, EVENT_VICTORY, EVENT_WAVE_CLEAR } from './world.js';
 import { stageShot } from './shots.js';
 
 const BEST_KEY = 'emberwarden-best-score';
@@ -68,6 +68,7 @@ function main() {
       aimY: input.mouse.y || world.player.y - 1,
       firing: input.mouse.down || isHeld(input, 'fire'),
       dash: wasPressed(input, 'dash'),
+      nova: wasPressed(input, 'nova'),
       dt: STEP,
     };
   }
@@ -78,6 +79,9 @@ function main() {
     if (events & EVENT_KILL) SFX.kill(audio);
     if (events & EVENT_HURT) SFX.hurt(audio);
     if (events & EVENT_DASH) SFX.dash(audio);
+    if (events & EVENT_NOVA) SFX.nova(audio);
+    if (events & EVENT_CHAIN) SFX.chain(audio);
+    if (events & EVENT_AEGIS) SFX.aegis(audio);
     if (events & EVENT_WAVE_CLEAR) SFX.waveClear(audio);
     if (events & EVENT_OVER) SFX.gameOver(audio);
     if (events & EVENT_VICTORY) SFX.victory(audio);
