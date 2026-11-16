@@ -6,6 +6,10 @@
 
 Emberwarden is a top-down arena survival game: hold the last lantern against the dark tide through 10 waves, choosing boons between waves, with synthesized sound and procedural art.
 
+## How it plays
+
+Waves 1–3 teach the ropes — a few wisps, room to learn kiting and the dash. From wave 6 the horde grows denser, tougher and faster than the boons can keep up with, so the last waves are a genuine fight: a good run ends on a sliver of health, and a careless one ends in the dark. No cheap deaths — every hit is telegraphed, the dash gives a moment of safety, and standing still is what gets you killed.
+
 ## Run it
 
 ```sh

@@ -28,42 +28,46 @@ export const PLAYER = {
   dashTime: 0.16,
   dashCooldown: 2.2,
   // Brief invulnerability after taking a hit, so one touch is not two.
-  hurtGrace: 0.7,
+  // Short enough that a crowd can still wear the lantern down.
+  hurtGrace: 0.6,
   // The lantern's warm glow radius; boons can widen it.
   lightRadius: 210,
 };
 
 export const ENEMY = {
-  wisp:   { radius: 13, hp: 22,  speed: 96,  damage: 9,  score: 50,  touch: 0.55 },
+  wisp:   { radius: 13, hp: 22,  speed: 96,  damage: 10, score: 50,  touch: 0.55 },
   spitter:{ radius: 15, hp: 34,  speed: 62,  damage: 7,  score: 90,  touch: 0.6 },
-  brute:  { radius: 26, hp: 150, speed: 42,  damage: 18, score: 200, touch: 0.9 },
-  mote:   { radius: 8,  hp: 10,  speed: 150, damage: 5,  score: 25,  touch: 0.4 },
+  brute:  { radius: 26, hp: 150, speed: 42,  damage: 20, score: 200, touch: 0.8 },
+  mote:   { radius: 8,  hp: 10,  speed: 160, damage: 5,  score: 25,  touch: 0.4 },
   // Splitter: a fat wisp that bursts into two motes when it dies.
   splitter:{ radius: 20, hp: 55, speed: 72,  damage: 11, score: 120, touch: 0.65 },
 };
 
 // Waves: how many of each kind, and how fast they trickle in.
+// Early waves stay learnable; from wave 6 the horde grows denser, tougher
+// and faster than the player's boons can keep up with, so the last waves
+// are a real fight instead of a victory lap.
 export const WAVES = [
   { wisp: 6,  spitter: 0, brute: 0, splitter: 0, spawnGap: 1.15, hpMul: 1.00, speedMul: 1.00 },
-  { wisp: 9,  spitter: 2, brute: 0, splitter: 0, spawnGap: 1.05, hpMul: 1.05, speedMul: 1.03 },
-  { wisp: 11, spitter: 3, brute: 1, splitter: 1, spawnGap: 0.98, hpMul: 1.10, speedMul: 1.06 },
-  { wisp: 13, spitter: 4, brute: 1, splitter: 2, spawnGap: 0.92, hpMul: 1.16, speedMul: 1.09 },
-  { wisp: 15, spitter: 5, brute: 2, splitter: 2, spawnGap: 0.86, hpMul: 1.22, speedMul: 1.12 },
-  { wisp: 16, spitter: 7, brute: 2, splitter: 3, spawnGap: 0.80, hpMul: 1.30, speedMul: 1.15 },
-  { wisp: 18, spitter: 8, brute: 3, splitter: 3, spawnGap: 0.74, hpMul: 1.38, speedMul: 1.18 },
-  { wisp: 20, spitter: 9, brute: 4, splitter: 4, spawnGap: 0.68, hpMul: 1.47, speedMul: 1.21 },
-  { wisp: 22, spitter: 11, brute: 5, splitter: 4, spawnGap: 0.62, hpMul: 1.57, speedMul: 1.24 },
-  { wisp: 26, spitter: 13, brute: 6, splitter: 5, spawnGap: 0.56, hpMul: 1.68, speedMul: 1.28 },
+  { wisp: 9,  spitter: 2, brute: 0, splitter: 0, spawnGap: 1.05, hpMul: 1.08, speedMul: 1.04 },
+  { wisp: 11, spitter: 3, brute: 1, splitter: 1, spawnGap: 0.98, hpMul: 1.18, speedMul: 1.08 },
+  { wisp: 13, spitter: 4, brute: 1, splitter: 2, spawnGap: 0.92, hpMul: 1.30, speedMul: 1.13 },
+  { wisp: 15, spitter: 5, brute: 2, splitter: 2, spawnGap: 0.86, hpMul: 1.45, speedMul: 1.18 },
+  { wisp: 18, spitter: 8, brute: 3, splitter: 4, spawnGap: 0.76, hpMul: 1.55, speedMul: 1.22 },
+  { wisp: 20, spitter: 10, brute: 4, splitter: 4, spawnGap: 0.70, hpMul: 1.62, speedMul: 1.25 },
+  { wisp: 21, spitter: 10, brute: 5, splitter: 5, spawnGap: 0.64, hpMul: 1.90, speedMul: 1.33 },
+  { wisp: 22, spitter: 12, brute: 6, splitter: 5, spawnGap: 0.58, hpMul: 2.08, speedMul: 1.39 },
+  { wisp: 25, spitter: 13, brute: 7, splitter: 6, spawnGap: 0.52, hpMul: 2.30, speedMul: 1.45 },
 ];
 
 export const SPITTER = {
   // Preferred range band: close in when too far, back off when too close.
   wantMin: 260,
   wantMax: 360,
-  shotSpeed: 250,
+  shotSpeed: 275,
   shotRadius: 6,
-  shotDamage: 8,
-  shotInterval: 2.4,
+  shotDamage: 9,
+  shotInterval: 2.3,
 };
 
 export const BOONS = [
